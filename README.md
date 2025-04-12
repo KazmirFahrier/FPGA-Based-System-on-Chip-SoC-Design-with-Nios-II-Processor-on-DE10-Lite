@@ -40,4 +40,22 @@ This project implements a fully functional embedded **System-on-Chip (SoC)** on 
 
 ## 📷 Block Diagram
 
+     +---------------------------+
+     |         Nios II          |
+     |      Soft Processor      |
+     +------------+-------------+
+                  |
+    +-------------+--------------+
+    |                            |
+On-chip RAM                 On-chip Flash
+    |                            |
+  Timer                     System ID
+    |                            |
+ LED PIO <==> Slide PIO <==> Interval Timer
+    |                            |
+   SPI <=> Accelerometer     ADC Core
+                  |
+          JTAG UART Console
+
+
 
