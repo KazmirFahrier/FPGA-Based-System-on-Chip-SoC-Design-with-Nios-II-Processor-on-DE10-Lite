@@ -1,0 +1,48 @@
+# macOS
+.DS_Store
+
+# Quartus generated databases and reports
+db/
+incremental_db/
+output_files/
+simulation/
+*.rpt
+*.summary
+*.done
+*.smsg
+*.qws
+*.jdi
+*.pin
+*.sta.rpt
+*.fit.rpt
+*.map.rpt
+*.asm.rpt
+*.tan.rpt
+
+# FPGA programming/build products
+*.sof
+*.pof
+*.jic
+*.rbf
+*.cdf
+
+# Platform Designer generated build folders
+*_generation/
+*/synthesis/
+*/simulation/
+
+# Nios II build outputs
+Debug/
+Release/
+obj/
+*.elf
+*.hex
+*.map
+*.objdump
+*.o
+*.a
+
+# IDE metadata
+.metadata/
+.settings/
+*.launch
