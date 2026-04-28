@@ -1,0 +1,1562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Embed.qsys — FPGA SoC with Nios II on DE10-Lite | Kazmir Fahrier</title>
+<meta name="description" content="A custom System-on-Chip built around the Intel Nios II Gen2 soft processor on the Terasic DE10-Lite, with full hardware/software validation. By Kazmir Fahrier." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,300;1,9..144,500&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0c0f1a;
+    --bg-2: #11151f;
+    --panel: #161b27;
+    --panel-2: #1c2231;
+    --line: #2a3144;
+    --line-soft: #1f2535;
+    --ink: #ece6d6;
+    --ink-dim: #b8b3a4;
+    --ink-mute: #6f6e64;
+    --copper: #d28b4a;       /* primary accent */
+    --copper-bright: #f0a663;
+    --copper-deep: #8a5a32;
+    --cyan: #6db7c2;          /* secondary accent for data */
+    --cyan-soft: #3d6770;
+    --rust: #a14a2a;
+    --good: #8aa663;          /* validation green */
+    --warn: #d2a14a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-weight: 400;
+    line-height: 1.6;
+    font-size: 14.5px;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    background-image:
+      radial-gradient(circle at 18% 12%, rgba(210,139,74,0.07) 0%, transparent 45%),
+      radial-gradient(circle at 82% 88%, rgba(109,183,194,0.05) 0%, transparent 50%),
+      linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 56px 56px, 56px 56px;
+    background-attachment: fixed;
+  }
+
+  /* film grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    z-index: 1;
+    background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  a { color: var(--copper-bright); text-decoration: none; }
+  a:hover { color: var(--ink); }
+
+  /* --------- Top nav --------- */
+  .topbar {
+    position: sticky; top: 0;
+    z-index: 50;
+    backdrop-filter: blur(10px);
+    background: rgba(12,15,26,0.78);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .topbar-inner {
+    max-width: 1200px; margin: 0 auto;
+    padding: 14px 28px;
+    display: flex; align-items: center; gap: 24px;
+    font-size: 12px;
+  }
+  .topbar .brand {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 500;
+    font-size: 16px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .topbar .brand .dot { color: var(--copper); }
+  .topbar nav {
+    margin-left: auto;
+    display: flex; gap: 26px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 11px;
+  }
+  .topbar nav a { color: var(--ink-dim); }
+  .topbar nav a:hover { color: var(--copper-bright); }
+  @media (max-width: 720px) {
+    .topbar nav { display: none; }
+  }
+
+  /* --------- Layout --------- */
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 28px; position: relative; z-index: 2; }
+
+  section { padding: 96px 0; border-top: 1px solid var(--line-soft); position: relative; }
+  section:first-of-type { border-top: 0; }
+
+  .section-tag {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 10.5px; letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--copper);
+    margin-bottom: 18px;
+  }
+  .section-tag::before {
+    content: ''; width: 24px; height: 1px;
+    background: var(--copper);
+  }
+  .section-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: clamp(34px, 4.6vw, 54px);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin-bottom: 22px;
+    color: var(--ink);
+  }
+  .section-title em {
+    font-style: italic;
+    font-weight: 500;
+    color: var(--copper-bright);
+  }
+  .section-lede {
+    color: var(--ink-dim);
+    max-width: 64ch;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  /* --------- HERO --------- */
+  .hero {
+    padding: 110px 0 80px;
+    border-top: 0;
+    position: relative;
+    min-height: 88vh;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .hero .meta-row {
+    display: flex; flex-wrap: wrap; gap: 22px;
+    font-size: 11px; letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 38px;
+  }
+  .hero .meta-row span b { color: var(--copper); font-weight: 500; }
+  .hero h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: clamp(44px, 7vw, 96px);
+    line-height: 0.98;
+    letter-spacing: -0.035em;
+    margin-bottom: 32px;
+    color: var(--ink);
+    max-width: 16ch;
+  }
+  .hero h1 .em-italic {
+    font-style: italic;
+    font-weight: 500;
+    color: var(--copper-bright);
+    display: inline-block;
+  }
+  .hero h1 .glyph {
+    color: var(--copper);
+    font-style: normal;
+  }
+  .hero .subtitle {
+    color: var(--ink-dim);
+    font-size: 16px;
+    line-height: 1.7;
+    max-width: 60ch;
+    margin-bottom: 40px;
+  }
+  .hero .cta-row {
+    display: flex; flex-wrap: wrap; gap: 14px;
+    margin-bottom: 60px;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 13px 22px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink);
+    transition: all 0.22s ease;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: var(--copper);
+    border-color: var(--copper);
+    color: #1a0f06;
+  }
+  .btn-primary:hover {
+    background: var(--copper-bright);
+    border-color: var(--copper-bright);
+    transform: translate(-2px,-2px);
+    box-shadow: 4px 4px 0 var(--copper-deep);
+  }
+  .btn-ghost:hover {
+    border-color: var(--copper);
+    color: var(--copper-bright);
+    transform: translate(-2px,-2px);
+    box-shadow: 4px 4px 0 var(--line);
+  }
+  .btn .arrow { display: inline-block; transition: transform 0.22s ease; }
+  .btn:hover .arrow { transform: translateX(3px); }
+
+  /* hero specs grid */
+  .hero-specs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .hero-spec {
+    padding: 22px 24px 22px 0;
+    border-right: 1px solid var(--line);
+  }
+  .hero-spec:last-child { border-right: 0; padding-right: 0; }
+  .hero-spec .lbl {
+    font-size: 10px; letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 8px;
+  }
+  .hero-spec .val {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 28px;
+    color: var(--copper-bright);
+    letter-spacing: -0.02em;
+  }
+  .hero-spec .val small {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-mute);
+    margin-left: 4px;
+    letter-spacing: 0;
+    font-weight: 400;
+  }
+  @media (max-width: 760px) {
+    .hero-specs { grid-template-columns: repeat(2, 1fr); }
+    .hero-spec { padding: 18px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .hero-spec:nth-child(2n) { border-right: 0; }
+    .hero-spec:nth-last-child(-n+2) { border-bottom: 0; }
+  }
+
+  /* corner markers */
+  .corner-mark {
+    position: absolute;
+    width: 12px; height: 12px;
+    border: 1px solid var(--copper);
+  }
+  .corner-mark.tl { top: 14px; left: 14px; border-right: 0; border-bottom: 0; }
+  .corner-mark.tr { top: 14px; right: 14px; border-left: 0; border-bottom: 0; }
+  .corner-mark.bl { bottom: 14px; left: 14px; border-right: 0; border-top: 0; }
+  .corner-mark.br { bottom: 14px; right: 14px; border-left: 0; border-top: 0; }
+
+  /* --------- Overview --------- */
+  .overview-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 60px;
+    align-items: start;
+  }
+  @media (max-width: 880px) { .overview-grid { grid-template-columns: 1fr; gap: 40px; } }
+  .goal-list {
+    list-style: none;
+    border-top: 1px solid var(--line);
+  }
+  .goal-list li {
+    padding: 18px 0 18px 36px;
+    border-bottom: 1px solid var(--line-soft);
+    position: relative;
+    color: var(--ink-dim);
+    font-size: 14px;
+  }
+  .goal-list li::before {
+    content: counter(goal-counter, decimal-leading-zero);
+    counter-increment: goal-counter;
+    position: absolute; left: 0; top: 18px;
+    font-size: 11px;
+    color: var(--copper);
+    font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+  .goal-list { counter-reset: goal-counter; }
+  .goal-list li b { color: var(--ink); font-weight: 500; }
+
+  /* --------- Architecture diagram --------- */
+  .arch-frame {
+    margin-top: 50px;
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, var(--panel) 0%, var(--bg-2) 100%);
+    padding: 30px 30px 24px;
+    position: relative;
+  }
+  .arch-frame::before {
+    content: 'EMBED.QSYS · PLATFORM DESIGNER · v1.0';
+    position: absolute;
+    top: -1px; right: 24px;
+    transform: translateY(-50%);
+    background: var(--bg);
+    padding: 0 12px;
+    font-size: 10px;
+    color: var(--copper);
+    letter-spacing: 0.18em;
+  }
+  .arch-frame::after {
+    content: 'TOP-LEVEL: DE10_LITE_DEFAULT';
+    position: absolute;
+    bottom: -1px; left: 24px;
+    transform: translateY(50%);
+    background: var(--bg);
+    padding: 0 12px;
+    font-size: 10px;
+    color: var(--ink-mute);
+    letter-spacing: 0.18em;
+  }
+  .arch-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .arch-legend {
+    display: flex; flex-wrap: wrap; gap: 22px;
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--line);
+    font-size: 11px;
+    color: var(--ink-dim);
+  }
+  .arch-legend .swatch {
+    display: inline-block;
+    width: 16px; height: 4px;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+
+  /* --------- Building blocks grid --------- */
+  .blocks-grid {
+    margin-top: 44px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    border: 1px solid var(--line);
+  }
+  @media (max-width: 880px) { .blocks-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .blocks-grid { grid-template-columns: 1fr; } }
+  .block-card {
+    padding: 24px 22px;
+    border-right: 1px solid var(--line-soft);
+    border-bottom: 1px solid var(--line-soft);
+    transition: background 0.22s ease;
+    position: relative;
+  }
+  .block-card:hover { background: var(--panel); }
+  .block-card .bk-id {
+    font-size: 10.5px; color: var(--copper);
+    letter-spacing: 0.15em;
+    margin-bottom: 6px;
+    display: flex; justify-content: space-between;
+  }
+  .block-card .bk-name {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 19px;
+    color: var(--ink);
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+  }
+  .block-card .bk-name code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--cyan);
+    font-weight: 400;
+    background: rgba(109,183,194,0.06);
+    padding: 1px 6px;
+    border-radius: 2px;
+  }
+  .block-card .bk-desc {
+    font-size: 12.5px;
+    color: var(--ink-dim);
+    line-height: 1.65;
+  }
+
+  /* --------- Memory map --------- */
+  .memmap {
+    margin-top: 36px;
+    border: 1px solid var(--line);
+    background: var(--bg-2);
+    overflow: hidden;
+  }
+  .memmap-header {
+    display: grid;
+    grid-template-columns: 2fr 1.4fr 3fr;
+    padding: 14px 22px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .memmap-row {
+    display: grid;
+    grid-template-columns: 2fr 1.4fr 3fr;
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--line-soft);
+    align-items: center;
+    transition: background 0.18s ease;
+  }
+  .memmap-row:last-child { border-bottom: 0; }
+  .memmap-row:hover { background: var(--panel); }
+  .memmap-row .slv {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 500;
+    color: var(--ink);
+    font-size: 15px;
+  }
+  .memmap-row .addr {
+    color: var(--copper-bright);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+  }
+  .memmap-row .note {
+    color: var(--ink-dim);
+    font-size: 12.5px;
+  }
+  @media (max-width: 760px) {
+    .memmap-header { display: none; }
+    .memmap-row {
+      grid-template-columns: 1fr;
+      gap: 6px;
+      padding: 18px 18px;
+    }
+    .memmap-row .slv { font-size: 16px; }
+    .memmap-row .addr { font-size: 12px; }
+  }
+
+  /* --------- Firmware demo --------- */
+  .demo-grid {
+    margin-top: 44px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: stretch;
+  }
+  @media (max-width: 880px) { .demo-grid { grid-template-columns: 1fr; } }
+
+  .console {
+    background: #07090f;
+    border: 1px solid var(--line);
+    padding: 0;
+    font-family: 'JetBrains Mono', monospace;
+    display: flex; flex-direction: column;
+    min-height: 380px;
+  }
+  .console-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel);
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    color: var(--ink-mute);
+  }
+  .console-bar .led {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--copper);
+    box-shadow: 0 0 6px var(--copper);
+  }
+  .console-body {
+    padding: 18px;
+    flex: 1;
+    overflow-y: auto;
+    font-size: 12.5px;
+    color: var(--ink-dim);
+  }
+  .console-body .line { padding: 1px 0; }
+  .console-body .line.sys { color: var(--cyan); }
+  .console-body .line.cmd { color: var(--copper-bright); }
+  .console-body .line.val { color: var(--ink); }
+  .console-body .line.val .hex { color: var(--copper); }
+  .console-body .cursor {
+    display: inline-block;
+    width: 7px; height: 14px;
+    background: var(--copper);
+    vertical-align: middle;
+    animation: blink 1s steps(2) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .led-panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    padding: 28px 24px;
+    display: flex; flex-direction: column;
+    gap: 24px;
+  }
+  .led-panel-title {
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .led-row {
+    display: flex; gap: 10px;
+    justify-content: space-between;
+    padding: 28px 8px;
+    border: 1px dashed var(--line);
+    background: var(--bg-2);
+  }
+  .led {
+    width: 36px; height: 36px;
+    background: rgba(210,139,74,0.07);
+    border: 1px solid var(--copper-deep);
+    border-radius: 50%;
+    position: relative;
+    transition: all 0.12s ease;
+  }
+  .led.on {
+    background: var(--copper);
+    border-color: var(--copper-bright);
+    box-shadow:
+      0 0 12px var(--copper-bright),
+      0 0 28px rgba(240,166,99,0.5),
+      inset 0 0 6px rgba(255,200,140,0.7);
+  }
+  .led-labels {
+    display: flex; justify-content: space-between;
+    padding: 0 14px;
+    font-size: 10px;
+    color: var(--ink-mute);
+    letter-spacing: 0.08em;
+  }
+  .led-controls {
+    display: flex; gap: 10px; flex-wrap: wrap;
+  }
+  .cmd-btn {
+    flex: 1;
+    min-width: 80px;
+    padding: 14px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink-dim);
+    cursor: pointer;
+    transition: all 0.18s ease;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .cmd-btn:hover {
+    border-color: var(--copper);
+    color: var(--ink);
+  }
+  .cmd-btn.active {
+    border-color: var(--copper);
+    background: rgba(210,139,74,0.12);
+    color: var(--copper-bright);
+  }
+  .cmd-btn .key {
+    display: inline-block;
+    margin-right: 8px;
+    padding: 2px 7px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    color: var(--copper);
+    font-weight: 500;
+  }
+  .cmd-btn.active .key {
+    background: var(--copper);
+    color: #0c0f1a;
+    border-color: var(--copper);
+  }
+  .led-readout {
+    display: flex; justify-content: space-between;
+    align-items: center;
+    font-size: 11.5px;
+    color: var(--ink-mute);
+    letter-spacing: 0.08em;
+  }
+  .led-readout .hex-val {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 22px;
+    color: var(--copper-bright);
+    font-weight: 500;
+  }
+
+  /* --------- Workflow timeline --------- */
+  .workflow {
+    margin-top: 44px;
+    counter-reset: step;
+  }
+  .step {
+    display: grid;
+    grid-template-columns: 80px 1fr 200px;
+    gap: 22px;
+    padding: 22px 0;
+    border-bottom: 1px solid var(--line-soft);
+    align-items: start;
+  }
+  @media (max-width: 720px) {
+    .step { grid-template-columns: 60px 1fr; }
+    .step .step-tool { grid-column: 2; padding-top: 6px; color: var(--copper); }
+  }
+  .step-num {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: 38px;
+    color: var(--ink-mute);
+    line-height: 1;
+    letter-spacing: -0.04em;
+    counter-increment: step;
+  }
+  .step-num::before {
+    content: counter(step, decimal-leading-zero);
+  }
+  .step-num.active { color: var(--copper-bright); font-weight: 500; }
+  .step-body h4 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 18px;
+    color: var(--ink);
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
+  }
+  .step-body p {
+    color: var(--ink-dim);
+    font-size: 13px;
+    line-height: 1.65;
+  }
+  .step-tool {
+    text-align: right;
+    font-size: 10.5px;
+    color: var(--copper);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding-top: 12px;
+  }
+
+  /* --------- Tech stack --------- */
+  .stack {
+    margin-top: 36px;
+    display: flex; flex-wrap: wrap;
+    gap: 8px;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px;
+    border: 1px solid var(--line);
+    font-size: 11.5px;
+    color: var(--ink-dim);
+    background: var(--bg-2);
+    transition: all 0.18s ease;
+  }
+  .chip:hover {
+    border-color: var(--copper);
+    color: var(--copper-bright);
+  }
+  .chip .pct {
+    font-size: 10px;
+    color: var(--ink-mute);
+    margin-left: 6px;
+  }
+
+  /* --------- Validation/Footer --------- */
+  .validation {
+    margin-top: 36px;
+    border: 1px solid var(--line);
+    background: var(--bg-2);
+    padding: 28px 32px;
+  }
+  .check-list { list-style: none; }
+  .check-list li {
+    padding: 11px 0 11px 32px;
+    position: relative;
+    color: var(--ink-dim);
+    font-size: 13px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .check-list li:last-child { border-bottom: 0; }
+  .check-list li::before {
+    content: '✓';
+    position: absolute; left: 0; top: 11px;
+    color: var(--good);
+    font-weight: 700;
+  }
+  .check-list li code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--cyan);
+    background: rgba(109,183,194,0.06);
+    padding: 1px 5px;
+  }
+
+  /* --------- Footer / contact --------- */
+  .footer {
+    padding: 80px 0 60px;
+    border-top: 1px solid var(--line);
+    background: var(--bg-2);
+  }
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 60px;
+    align-items: end;
+  }
+  @media (max-width: 720px) { .footer-grid { grid-template-columns: 1fr; gap: 40px; } }
+  .footer h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: clamp(28px, 4vw, 44px);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-bottom: 18px;
+  }
+  .footer h3 em {
+    font-style: italic;
+    font-weight: 500;
+    color: var(--copper-bright);
+  }
+  .footer p {
+    color: var(--ink-dim);
+    font-size: 14px;
+    max-width: 56ch;
+    margin-bottom: 28px;
+  }
+  .footer-cta {
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .footer-link {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    transition: all 0.22s ease;
+    color: var(--ink);
+    font-size: 13px;
+  }
+  .footer-link:hover {
+    border-color: var(--copper);
+    background: var(--panel);
+    transform: translate(-2px,-2px);
+    box-shadow: 4px 4px 0 var(--line);
+    color: var(--copper-bright);
+  }
+  .footer-link svg {
+    flex-shrink: 0;
+    color: var(--copper);
+  }
+  .footer-link .lbl {
+    font-size: 10.5px;
+    color: var(--ink-mute);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .footer-bottom {
+    margin-top: 60px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line-soft);
+    display: flex; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px;
+    font-size: 11px;
+    color: var(--ink-mute);
+    letter-spacing: 0.1em;
+  }
+  .footer-bottom .right { text-align: right; }
+
+  /* fade-in on load */
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .rise > * { opacity: 0; animation: rise 0.7s ease forwards; }
+  .rise > *:nth-child(1) { animation-delay: 0.05s; }
+  .rise > *:nth-child(2) { animation-delay: 0.18s; }
+  .rise > *:nth-child(3) { animation-delay: 0.31s; }
+  .rise > *:nth-child(4) { animation-delay: 0.44s; }
+  .rise > *:nth-child(5) { animation-delay: 0.57s; }
+  .rise > *:nth-child(6) { animation-delay: 0.70s; }
+
+  /* selection */
+  ::selection { background: var(--copper); color: var(--bg); }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <span class="brand">k.fahrier<span class="dot">.</span></span>
+    <nav>
+      <a href="#overview">Overview</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#memmap">Memory Map</a>
+      <a href="#firmware">Firmware</a>
+      <a href="#workflow">Workflow</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ==================== HERO ==================== -->
+<section class="hero container">
+  <span class="corner-mark tl"></span>
+  <span class="corner-mark tr"></span>
+  <span class="corner-mark bl"></span>
+  <span class="corner-mark br"></span>
+  <div class="rise">
+    <div class="meta-row">
+      <span><b>PROJECT</b> &nbsp; CAPSTONE / SOC INTEGRATION</span>
+      <span><b>STATUS</b> &nbsp; VALIDATED ON HARDWARE</span>
+      <span><b>BOARD</b> &nbsp; TERASIC DE10-LITE / MAX10</span>
+    </div>
+    <h1>
+      A custom <span class="em-italic">System-on-Chip,</span><br />
+      built from the<br />
+      transistor up <span class="glyph">⌗</span>
+    </h1>
+    <p class="subtitle">
+      A configurable FPGA SoC built around the Intel Nios&nbsp;II Gen2 soft processor on the Terasic DE10-Lite — featuring full Avalon-MM interconnect, on-chip memory, SDRAM controller, JTAG UART, timers, PIOs, SPI, and a modular ADC. End-to-end hardware/software flow: Platform Designer integration, Quartus compilation, BSP generation, firmware in C, and board-level validation.
+    </p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://github.com/KazmirFahrier/FPGA-Based-System-on-Chip-SoC-Design-with-Nios-II-Processor-on-DE10-Lite" target="_blank" rel="noopener">
+        View Repository
+        <span class="arrow">→</span>
+      </a>
+      <a class="btn btn-ghost" href="https://www.linkedin.com/in/kazmir-fahrier" target="_blank" rel="noopener">
+        Connect on LinkedIn
+        <span class="arrow">↗</span>
+      </a>
+    </div>
+    <div class="hero-specs">
+      <div class="hero-spec">
+        <div class="lbl">CPU Clock</div>
+        <div class="val">80<small>MHz</small></div>
+      </div>
+      <div class="hero-spec">
+        <div class="lbl">On-Chip RAM</div>
+        <div class="val">16<small>KB</small></div>
+      </div>
+      <div class="hero-spec">
+        <div class="lbl">PIO Width</div>
+        <div class="val">10<small>bit</small></div>
+      </div>
+      <div class="hero-spec">
+        <div class="lbl">IP Blocks</div>
+        <div class="val">11<small>integrated</small></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== OVERVIEW ==================== -->
+<section id="overview" class="container">
+  <div class="overview-grid">
+    <div>
+      <span class="section-tag">01 / Overview</span>
+      <h2 class="section-title">Why build the chip <em>yourself?</em></h2>
+      <p class="section-lede">
+        Off-the-shelf microcontrollers solve common problems — but they freeze the architecture in silicon. This project takes the opposite approach: synthesize the processor, the memory, the interconnect, and the I/O peripherals into the FPGA fabric itself, so the entire system is a configuration choice. The result is a teaching-grade demonstration of the full hardware/software flow that production embedded engineers run every day.
+      </p>
+      <p class="section-lede" style="margin-top:14px;">
+        Developed as part of the University of Colorado Boulder <em style="font-style:italic;color:var(--ink);">FPGA Design for Embedded Systems</em> capstone — extended here with reproducible documentation and lab artifacts.
+      </p>
+    </div>
+    <ul class="goal-list">
+      <li><b>Configurable, not fixed.</b> Build a soft SoC instead of relying on a hard-processor MCU.</li>
+      <li><b>Real interconnect.</b> Wire processor, memory, clocks, debug, and I/O via Avalon-MM fabric.</li>
+      <li><b>Working firmware.</b> Author a Nios II C application that exercises the generated hardware.</li>
+      <li><b>Hardware validation.</b> Verify on real silicon — LEDs, switches, timers, JTAG UART output.</li>
+      <li><b>Reproducible artifacts.</b> Preserve the capstone guides and lab notebook so the work can be rebuilt.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ==================== ARCHITECTURE ==================== -->
+<section id="architecture" class="container">
+  <span class="section-tag">02 / Architecture</span>
+  <h2 class="section-title">The <em>SoC,</em> diagrammed.</h2>
+  <p class="section-lede">
+    The Nios II Gen2 processor sits at the center, with instruction and data masters reaching memory and peripherals through Avalon-MM interconnect fabric. A clock-crossing bridge isolates the high-speed CPU/SDRAM domain from the slower peripheral domain. Two PLLs synthesize the clocks; a SysID peripheral guarantees firmware and gateware never drift out of sync.
+  </p>
+
+  <div class="arch-frame">
+    <svg class="arch-svg" viewBox="0 0 1100 620" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="grid" width="22" height="22" patternUnits="userSpaceOnUse">
+          <path d="M 22 0 L 0 0 0 22" fill="none" stroke="rgba(255,255,255,0.025)" stroke-width="1"/>
+        </pattern>
+        <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" fill="#d28b4a" />
+        </marker>
+        <marker id="arrow-cyan" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" fill="#6db7c2" />
+        </marker>
+      </defs>
+
+      <rect width="1100" height="620" fill="url(#grid)"/>
+
+      <!-- domain region: CPU -->
+      <rect x="30" y="60" width="500" height="500" rx="2"
+            fill="rgba(210,139,74,0.04)" stroke="#d28b4a" stroke-width="1" stroke-dasharray="4 4"/>
+      <text x="48" y="84" font-family="JetBrains Mono" font-size="11" fill="#d28b4a" letter-spacing="2">
+        CPU / MEMORY DOMAIN — 80 MHz
+      </text>
+
+      <!-- domain region: peripheral -->
+      <rect x="560" y="60" width="510" height="500" rx="2"
+            fill="rgba(109,183,194,0.04)" stroke="#6db7c2" stroke-width="1" stroke-dasharray="4 4"/>
+      <text x="578" y="84" font-family="JetBrains Mono" font-size="11" fill="#6db7c2" letter-spacing="2">
+        PERIPHERAL DOMAIN — 40 MHz
+      </text>
+
+      <!-- Nios II core -->
+      <g>
+        <rect x="78" y="120" width="220" height="98" fill="#161b27" stroke="#d28b4a" stroke-width="1.5"/>
+        <text x="188" y="148" text-anchor="middle" font-family="Fraunces" font-style="italic" font-size="20" fill="#ece6d6" font-weight="500">nios2_gen2_0</text>
+        <text x="188" y="172" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#b8b3a4">Soft Processor · 32-bit RISC</text>
+        <text x="188" y="194" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#d28b4a">Instruction Master · Data Master</text>
+      </g>
+
+      <!-- Avalon interconnect fabric (vertical bus) -->
+      <g>
+        <rect x="328" y="120" width="40" height="380" fill="#1c2231" stroke="#d28b4a" stroke-width="1"/>
+        <text x="348" y="310" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#d28b4a" transform="rotate(-90 348 310)" letter-spacing="2">
+          AVALON-MM INTERCONNECT
+        </text>
+      </g>
+
+      <!-- CPU → bus -->
+      <line x1="298" y1="170" x2="328" y2="170" stroke="#d28b4a" stroke-width="1.4" marker-end="url(#arrow)"/>
+
+      <!-- On-chip RAM -->
+      <g>
+        <rect x="78" y="250" width="220" height="60" fill="#161b27" stroke="#d28b4a" stroke-width="1"/>
+        <text x="188" y="275" text-anchor="middle" font-family="Fraunces" font-style="italic" font-size="15" fill="#ece6d6">onchip_ram</text>
+        <text x="188" y="295" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#b8b3a4">16 KB · reset + exception target</text>
+      </g>
+      <line x1="298" y1="280" x2="328" y2="280" stroke="#d28b4a" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+      <!-- On-chip flash -->
+      <g>
+        <rect x="78" y="330" width="220" height="60" fill="#161b27" stroke="#d28b4a" stroke-width="1"/>
+        <text x="188" y="355" text-anchor="middle" font-family="Fraunces" font-style="italic" font-size="15" fill="#ece6d6">onchip_flash_0</text>
+        <text x="188" y="375" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#b8b3a4">MAX 10 internal flash</text>
+      </g>
+      <line x1="298" y1="360" x2="328" y2="360" stroke="#d28b4a" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+      <!-- SDRAM -->
+      <g>
+        <rect x="78" y="410" width="220" height="60" fill="#161b27" stroke="#d28b4a" stroke-width="1"/>
+        <text x="188" y="435" text-anchor="middle" font-family="Fraunces" font-style="italic" font-size="15" fill="#ece6d6">sdram</text>
+        <text x="188" y="455" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#b8b3a4">External SDRAM controller</text>
+      </g>
+      <line x1="298" y1="440" x2="328" y2="440" stroke="#d28b4a" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+      <!-- Clock crossing bridge -->
+      <g>
+        <rect x="430" y="200" width="200" height="80" fill="#1c2231" stroke="#d2a14a" stroke-width="1.5" stroke-dasharray="2 2"/>
+        <text x="530" y="230" text-anchor="middle" font-family="Fraunces" font-style="italic" font-size="14" fill="#d2a14a">clock-crossing</text>
+        <text x="530" y="250" text-anchor="middle" font-family="Fraunces" font-style="italic" font-size="14" fill="#d2a14a">bridge</text>
+        <text x="530" y="270" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#b8b3a4">80 MHz ⇄ 40 MHz</text>
+      </g>
+      <line x1="368" y1="240" x2="430" y2="240" stroke="#d2a14a" stroke-width="1.4"/>
+      <line x1="630" y1="240" x2="700" y2="240" stroke="#6db7c2" stroke-width="1.4" marker-end="url(#arrow-cyan)"/>
+
+      <!-- Peripheral bus -->
+      <g>
+        <rect x="700" y="120" width="40" height="380" fill="#1c2231" stroke="#6db7c2" stroke-width="1"/>
+        <text x="720" y="310" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#6db7c2" transform="rotate(-90 720 310)" letter-spacing="2">
+          PERIPHERAL BRIDGE WINDOW
+        </text>
+      </g>
+
+      <!-- Peripherals -->
+      <g>
+        <rect x="770" y="110" width="270" height="50" fill="#161b27" stroke="#6db7c2" stroke-width="1"/>
+        <text x="784" y="132" font-family="Fraunces" font-style="italic" font-size="14" fill="#ece6d6">jtag_uart</text>
+        <text x="784" y="150" font-family="JetBrains Mono" font-size="10" fill="#b8b3a4">Host ⇄ Nios II console</text>
+      </g>
+      <line x1="740" y1="135" x2="770" y2="135" stroke="#6db7c2" stroke-width="1.2" marker-end="url(#arrow-cyan)"/>
+
+      <g>
+        <rect x="770" y="170" width="270" height="50" fill="#161b27" stroke="#6db7c2" stroke-width="1"/>
+        <text x="784" y="192" font-family="Fraunces" font-style="italic" font-size="14" fill="#ece6d6">timer_0</text>
+        <text x="784" y="210" font-family="JetBrains Mono" font-size="10" fill="#b8b3a4">32-bit Avalon timer · HAL alarms</text>
+      </g>
+      <line x1="740" y1="195" x2="770" y2="195" stroke="#6db7c2" stroke-width="1.2" marker-end="url(#arrow-cyan)"/>
+
+      <g>
+        <rect x="770" y="230" width="270" height="50" fill="#161b27" stroke="#6db7c2" stroke-width="1"/>
+        <text x="784" y="252" font-family="Fraunces" font-style="italic" font-size="14" fill="#ece6d6">led_pio</text>
+        <text x="784" y="270" font-family="JetBrains Mono" font-size="10" fill="#b8b3a4">10-bit output · DE10-Lite red LEDs</text>
+      </g>
+      <line x1="740" y1="255" x2="770" y2="255" stroke="#6db7c2" stroke-width="1.2" marker-end="url(#arrow-cyan)"/>
+
+      <g>
+        <rect x="770" y="290" width="270" height="50" fill="#161b27" stroke="#6db7c2" stroke-width="1"/>
+        <text x="784" y="312" font-family="Fraunces" font-style="italic" font-size="14" fill="#ece6d6">slide_pio</text>
+        <text x="784" y="330" font-family="JetBrains Mono" font-size="10" fill="#b8b3a4">10-bit input · edge IRQ on switches</text>
+      </g>
+      <line x1="740" y1="315" x2="770" y2="315" stroke="#6db7c2" stroke-width="1.2" marker-end="url(#arrow-cyan)"/>
+
+      <g>
+        <rect x="770" y="350" width="270" height="50" fill="#161b27" stroke="#6db7c2" stroke-width="1"/>
+        <text x="784" y="372" font-family="Fraunces" font-style="italic" font-size="14" fill="#ece6d6">spi_0</text>
+        <text x="784" y="390" font-family="JetBrains Mono" font-size="10" fill="#b8b3a4">SPI master · G-sensor / accelerometer</text>
+      </g>
+      <line x1="740" y1="375" x2="770" y2="375" stroke="#6db7c2" stroke-width="1.2" marker-end="url(#arrow-cyan)"/>
+
+      <g>
+        <rect x="770" y="410" width="270" height="50" fill="#161b27" stroke="#6db7c2" stroke-width="1"/>
+        <text x="784" y="432" font-family="Fraunces" font-style="italic" font-size="14" fill="#ece6d6">modular_adc_0</text>
+        <text x="784" y="450" font-family="JetBrains Mono" font-size="10" fill="#b8b3a4">MAX 10 ADC · channel 1 enabled</text>
+      </g>
+      <line x1="740" y1="435" x2="770" y2="435" stroke="#6db7c2" stroke-width="1.2" marker-end="url(#arrow-cyan)"/>
+
+      <g>
+        <rect x="770" y="470" width="270" height="50" fill="#161b27" stroke="#6db7c2" stroke-width="1"/>
+        <text x="784" y="492" font-family="Fraunces" font-style="italic" font-size="14" fill="#ece6d6">sysid</text>
+        <text x="784" y="510" font-family="JetBrains Mono" font-size="10" fill="#b8b3a4">Hardware/software match guard</text>
+      </g>
+      <line x1="740" y1="495" x2="770" y2="495" stroke="#6db7c2" stroke-width="1.2" marker-end="url(#arrow-cyan)"/>
+
+      <!-- Clock sources at bottom -->
+      <g>
+        <rect x="78" y="500" width="220" height="48" fill="#11151f" stroke="#6f6e64" stroke-width="1" stroke-dasharray="2 2"/>
+        <text x="188" y="520" text-anchor="middle" font-family="Fraunces" font-style="italic" font-size="13" fill="#b8b3a4">altpll_0</text>
+        <text x="188" y="538" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#6f6e64">50 MHz → 80 MHz CPU/SDRAM, 40 MHz periph</text>
+      </g>
+      <g>
+        <rect x="780" y="540" width="240" height="40" fill="#11151f" stroke="#6f6e64" stroke-width="1" stroke-dasharray="2 2"/>
+        <text x="900" y="558" text-anchor="middle" font-family="Fraunces" font-style="italic" font-size="13" fill="#b8b3a4">altpll_1</text>
+        <text x="900" y="572" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#6f6e64">ADC clock path</text>
+      </g>
+
+      <!-- Board ref -->
+      <text x="1054" y="600" text-anchor="end" font-family="JetBrains Mono" font-size="9" fill="#6f6e64" letter-spacing="2">
+        DEVICE: 10M50DAF484C6GES
+      </text>
+    </svg>
+
+    <div class="arch-legend">
+      <span><span class="swatch" style="background:#d28b4a;"></span>CPU / Memory domain bus</span>
+      <span><span class="swatch" style="background:#6db7c2;"></span>Peripheral domain bus</span>
+      <span><span class="swatch" style="background:#d2a14a;"></span>Clock-crossing bridge</span>
+      <span><span class="swatch" style="background:#6f6e64;"></span>Clock generation (PLL)</span>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== BUILDING BLOCKS ==================== -->
+<section id="blocks" class="container">
+  <span class="section-tag">03 / IP Inventory</span>
+  <h2 class="section-title">Eleven blocks, one <em>integrated</em> system.</h2>
+  <p class="section-lede">
+    Every Platform Designer block was selected and wired deliberately — clocks routed to the right domains, masters paired with the right slaves, interrupts and reset signals connected end-to-end.
+  </p>
+
+  <div class="blocks-grid">
+    <div class="block-card">
+      <div class="bk-id"><span>IP · 01</span><span>CPU</span></div>
+      <div class="bk-name">Nios II Gen2 <code>nios2_gen2_0</code></div>
+      <div class="bk-desc">80&nbsp;MHz soft processor with separate instruction and data masters. The nucleus of the SoC.</div>
+    </div>
+    <div class="block-card">
+      <div class="bk-id"><span>IP · 02</span><span>MEMORY</span></div>
+      <div class="bk-name">On-Chip RAM <code>onchip_ram</code></div>
+      <div class="bk-desc">16&nbsp;KB of fabric memory mapped as the reset and exception target for the Nios II core.</div>
+    </div>
+    <div class="block-card">
+      <div class="bk-id"><span>IP · 03</span><span>MEMORY</span></div>
+      <div class="bk-name">On-Chip Flash <code>onchip_flash_0</code></div>
+      <div class="bk-desc">MAX&nbsp;10 internal flash region, accessible to the processor for non-volatile storage.</div>
+    </div>
+    <div class="block-card">
+      <div class="bk-id"><span>IP · 04</span><span>MEMORY</span></div>
+      <div class="bk-name">SDRAM Controller <code>sdram</code></div>
+      <div class="bk-desc">External SDRAM controller for the DE10-Lite — bulk working memory beyond on-chip resources.</div>
+    </div>
+    <div class="block-card">
+      <div class="bk-id"><span>IP · 05</span><span>I/O</span></div>
+      <div class="bk-name">JTAG UART <code>jtag_uart</code></div>
+      <div class="bk-desc">Console I/O channel between the Nios&nbsp;II program and the host computer over JTAG.</div>
+    </div>
+    <div class="block-card">
+      <div class="bk-id"><span>IP · 06</span><span>TIMING</span></div>
+      <div class="bk-name">Avalon Timer <code>timer_0</code></div>
+      <div class="bk-desc">32-bit Avalon timer driving HAL alarms and firmware-side delay routines (1 / 10 / 100 / 250&nbsp;ms).</div>
+    </div>
+    <div class="block-card">
+      <div class="bk-id"><span>IP · 07</span><span>I/O</span></div>
+      <div class="bk-name">LED PIO <code>led_pio</code></div>
+      <div class="bk-desc">10-bit output PIO mapped directly to the DE10-Lite red LEDs for the count display.</div>
+    </div>
+    <div class="block-card">
+      <div class="bk-id"><span>IP · 08</span><span>I/O</span></div>
+      <div class="bk-name">Slide PIO <code>slide_pio</code></div>
+      <div class="bk-desc">10-bit input PIO on the slide switches with edge-interrupt support for runtime user input.</div>
+    </div>
+    <div class="block-card">
+      <div class="bk-id"><span>IP · 09</span><span>I/O</span></div>
+      <div class="bk-name">SPI Master <code>spi_0</code></div>
+      <div class="bk-desc">SPI controller configured for the on-board accelerometer / G-sensor interface.</div>
+    </div>
+    <div class="block-card">
+      <div class="bk-id"><span>IP · 10</span><span>ANALOG</span></div>
+      <div class="bk-name">Modular ADC <code>modular_adc_0</code></div>
+      <div class="bk-desc">MAX&nbsp;10 modular ADC block with channel 1 enabled — sample store and sequencer CSRs exposed.</div>
+    </div>
+    <div class="block-card">
+      <div class="bk-id"><span>IP · 11</span><span>SAFETY</span></div>
+      <div class="bk-name">System ID <code>sysid</code></div>
+      <div class="bk-desc">Validates at runtime that the firmware was built against the same gateware now loaded on the FPGA.</div>
+    </div>
+    <div class="block-card" style="background:rgba(210,139,74,0.04);">
+      <div class="bk-id"><span>·</span><span>FABRIC</span></div>
+      <div class="bk-name">Avalon-MM Interconnect</div>
+      <div class="bk-desc">Generated by Platform Designer. Routes masters to slaves with a clock-crossing bridge between domains.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== MEMORY MAP ==================== -->
+<section id="memmap" class="container">
+  <span class="section-tag">04 / Memory Map</span>
+  <h2 class="section-title">Every slave, <em>addressable.</em></h2>
+  <p class="section-lede">
+    Address ranges generated by Platform Designer and verified against the BSP's <code style="color:var(--cyan);">system.h</code>. The peripheral bridge window is what the CPU sees on the far side of the clock-crossing bridge.
+  </p>
+
+  <div class="memmap">
+    <div class="memmap-header">
+      <div>Slave</div>
+      <div>Base Address</div>
+      <div>Notes</div>
+    </div>
+    <div class="memmap-row">
+      <div class="slv">SDRAM</div>
+      <div class="addr">0x04000000</div>
+      <div class="note">External SDRAM controller — bulk working memory.</div>
+    </div>
+    <div class="memmap-row">
+      <div class="slv">Peripheral bridge window</div>
+      <div class="addr">0x08000000</div>
+      <div class="note">Timer, switches, LEDs, SysID, and JTAG UART live behind the clock-crossing bridge.</div>
+    </div>
+    <div class="memmap-row">
+      <div class="slv">On-chip flash data</div>
+      <div class="addr">0x09200000</div>
+      <div class="note">MAX 10 internal flash data interface.</div>
+    </div>
+    <div class="memmap-row">
+      <div class="slv">On-chip RAM</div>
+      <div class="addr">0x09404000</div>
+      <div class="note">16 KB on-chip memory — reset / exception target.</div>
+    </div>
+    <div class="memmap-row">
+      <div class="slv">Nios II debug memory</div>
+      <div class="addr">0x09408800</div>
+      <div class="note">Processor debug access region.</div>
+    </div>
+    <div class="memmap-row">
+      <div class="slv">Modular ADC sample store CSR</div>
+      <div class="addr">0x09409000</div>
+      <div class="note">ADC sample-store control / status registers.</div>
+    </div>
+    <div class="memmap-row">
+      <div class="slv">SPI controller</div>
+      <div class="addr">0x09409200</div>
+      <div class="note">SPI master control registers.</div>
+    </div>
+    <div class="memmap-row">
+      <div class="slv">Modular ADC sequencer CSR</div>
+      <div class="addr">0x09409240</div>
+      <div class="note">ADC sequencer control / status registers.</div>
+    </div>
+    <div class="memmap-row">
+      <div class="slv">On-chip flash CSR</div>
+      <div class="addr">0x09409248</div>
+      <div class="note">Flash control / status registers.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== FIRMWARE ==================== -->
+<section id="firmware" class="container">
+  <span class="section-tag">05 / Firmware</span>
+  <h2 class="section-title">A C application, <em>talking to silicon.</em></h2>
+  <p class="section-lede">
+    The firmware in <code style="color:var(--cyan);">software/main.c</code> initializes the HAL alarm system, prints a banner over JTAG UART, waits for a host command, then drives the LED PIO with an 8-bit count pattern — printing each value as it goes. Try the commands below to see the count sequences.
+  </p>
+
+  <div class="demo-grid">
+    <div class="led-panel">
+      <div class="led-panel-title">LED_PIO · Live demo</div>
+      <div class="led-row" id="ledRow">
+        <!-- 8 LEDs injected by JS -->
+      </div>
+      <div class="led-labels">
+        <span>D7</span><span>D6</span><span>D5</span><span>D4</span>
+        <span>D3</span><span>D2</span><span>D1</span><span>D0</span>
+      </div>
+      <div class="led-readout">
+        <span>COUNT</span>
+        <span class="hex-val" id="hexVal">0x00</span>
+      </div>
+      <div class="led-controls">
+        <button class="cmd-btn" data-cmd="u"><span class="key">u</span>Count up · +1</button>
+        <button class="cmd-btn" data-cmd="d"><span class="key">d</span>Count down · −1</button>
+        <button class="cmd-btn" data-cmd="3"><span class="key">3</span>Step by 3</button>
+        <button class="cmd-btn" data-cmd="stop" style="flex:0 0 auto; min-width:70px;">Stop</button>
+      </div>
+    </div>
+
+    <div class="console">
+      <div class="console-bar">
+        <span class="led"></span>
+        <span>JTAG_UART · NIOS II CONSOLE · PID 0x{{pid}}</span>
+      </div>
+      <div class="console-body" id="console">
+        <div class="line sys">[boot] Nios II Gen2 online @ 80 MHz</div>
+        <div class="line sys">[boot] HAL alarms armed (1ms · 10ms · 100ms · 250ms)</div>
+        <div class="line sys">[boot] led_pio mapped at 0x08000040</div>
+        <div class="line sys">[boot] sysid match — firmware ↔ gateware OK</div>
+        <div class="line sys">[boot] ready · awaiting command (u | d | 3)</div>
+        <div class="line">> <span class="cursor"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Helper module list -->
+  <div style="margin-top: 44px; display:grid; grid-template-columns: repeat(3, 1fr); gap:0; border:1px solid var(--line);">
+    <div style="padding:20px 22px; border-right:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft);">
+      <div style="font-size:10.5px; letter-spacing:0.16em; color:var(--copper); margin-bottom:6px;">MODULE</div>
+      <div style="font-family:'Fraunces'; font-style:italic; color:var(--ink); font-size:16px;">alarm_util</div>
+      <div style="font-size:12px; color:var(--ink-dim); margin-top:6px;">Starts the 250 / 100 / 10 / 1 ms HAL alarms.</div>
+    </div>
+    <div style="padding:20px 22px; border-right:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft);">
+      <div style="font-size:10.5px; letter-spacing:0.16em; color:var(--copper); margin-bottom:6px;">MODULE</div>
+      <div style="font-family:'Fraunces'; font-style:italic; color:var(--ink); font-size:16px;">delay_wait</div>
+      <div style="font-size:12px; color:var(--ink-dim); margin-top:6px;">Implements delay modes built on the alarm counters.</div>
+    </div>
+    <div style="padding:20px 22px; border-bottom:1px solid var(--line-soft);">
+      <div style="font-size:10.5px; letter-spacing:0.16em; color:var(--copper); margin-bottom:6px;">MODULE</div>
+      <div style="font-family:'Fraunces'; font-style:italic; color:var(--ink); font-size:16px;">jtag_uart_util</div>
+      <div style="font-size:12px; color:var(--ink-dim); margin-top:6px;">Formats count output for the JTAG UART console.</div>
+    </div>
+    <div style="padding:20px 22px; border-right:1px solid var(--line-soft);">
+      <div style="font-size:10.5px; letter-spacing:0.16em; color:var(--copper); margin-bottom:6px;">MODULE</div>
+      <div style="font-family:'Fraunces'; font-style:italic; color:var(--ink); font-size:16px;">led_util</div>
+      <div style="font-size:12px; color:var(--ink-dim); margin-top:6px;">Writes count values to the memory-mapped LED PIO.</div>
+    </div>
+    <div style="padding:20px 22px; border-right:1px solid var(--line-soft);">
+      <div style="font-size:10.5px; letter-spacing:0.16em; color:var(--copper); margin-bottom:6px;">HEADER</div>
+      <div style="font-family:'Fraunces'; font-style:italic; color:var(--ink); font-size:16px;">system_validation</div>
+      <div style="font-size:12px; color:var(--ink-dim); margin-top:6px;">Compile-time checks for required Platform Designer peripherals.</div>
+    </div>
+    <div style="padding:20px 22px;">
+      <div style="font-size:10.5px; letter-spacing:0.16em; color:var(--copper); margin-bottom:6px;">MODULE</div>
+      <div style="font-family:'Fraunces'; font-style:italic; color:var(--ink); font-size:16px;">error_loop</div>
+      <div style="font-size:12px; color:var(--ink-dim); margin-top:6px;">Halts execution after unrecoverable initialization errors.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== WORKFLOW ==================== -->
+<section id="workflow" class="container">
+  <span class="section-tag">06 / Build & Run</span>
+  <h2 class="section-title">From <em>RTL to LEDs,</em> in nine steps.</h2>
+  <p class="section-lede">
+    A reproducible flow from a fresh checkout to blinking lights — the same sequence used during the capstone validation.
+  </p>
+
+  <div class="workflow">
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Open the Quartus project</h4>
+        <p>Launch <code style="color:var(--cyan);">hardware/Embed.qpf</code> in Quartus Prime Lite. Confirm the device is recognized as <code style="color:var(--cyan);">10M50DAF484C6GES</code>.</p>
+      </div>
+      <div class="step-tool">Quartus Prime Lite</div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Regenerate the SoC</h4>
+        <p>Open <code style="color:var(--cyan);">hardware/Embed.qsys</code> in Platform Designer. Regenerate HDL if any blocks have changed. Inspect the interconnect for missing IP warnings.</p>
+      </div>
+      <div class="step-tool">Platform Designer</div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Compile the gateware</h4>
+        <p>Run a full Quartus compile to produce the FPGA programming file. Keep an eye on timing closure if PLL or memory parameters were edited.</p>
+      </div>
+      <div class="step-tool">Quartus · Compile</div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Program the DE10-Lite</h4>
+        <p>Use the Quartus Programmer over USB Blaster to load the <code style="color:var(--cyan);">.sof</code> onto the MAX&nbsp;10.</p>
+      </div>
+      <div class="step-tool">USB Blaster · JTAG</div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Generate the BSP</h4>
+        <p>Create or refresh the Nios II Board Support Package from the generated hardware description. The BSP produces a <code style="color:var(--cyan);">system.h</code> matching the gateware.</p>
+      </div>
+      <div class="step-tool">Nios II SBT</div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Pull in the firmware</h4>
+        <p>Add the files in <code style="color:var(--cyan);">software/</code> to the Nios II application project. Confirm the helper modules (alarm, delay, JTAG UART, LED) compile without warnings.</p>
+      </div>
+      <div class="step-tool">Eclipse / SBT</div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Build the application</h4>
+        <p>Compile the firmware with the Nios II Software Build Tools — either the Eclipse front end or the command-line SBT flow.</p>
+      </div>
+      <div class="step-tool">GCC for Nios II</div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Run on target</h4>
+        <p>Launch the ELF onto the active Nios II target and open the Nios II console window connected to the JTAG UART.</p>
+      </div>
+      <div class="step-tool">JTAG UART Console</div>
+    </div>
+    <div class="step">
+      <div class="step-num active"></div>
+      <div class="step-body">
+        <h4>Validate on hardware</h4>
+        <p>Type <code style="color:var(--cyan);">u</code>, <code style="color:var(--cyan);">d</code>, or <code style="color:var(--cyan);">3</code> in the console — and watch the red LEDs march through the count sequence on the board.</p>
+      </div>
+      <div class="step-tool">Bench validation ✓</div>
+    </div>
+  </div>
+
+  <div class="validation">
+    <div style="font-size:10.5px; letter-spacing:0.18em; color:var(--copper); margin-bottom:18px; text-transform:uppercase;">Validation checklist</div>
+    <ul class="check-list">
+      <li>Quartus recognizes the device as <code>10M50DAF484C6GES</code>.</li>
+      <li>Platform Designer generates the <code>Embed</code> system without missing IP warnings.</li>
+      <li>BSP <code>system.h</code> defines <code>LED_PIO_BASE</code>, <code>JTAG_UART_BASE</code>, <code>TIMER_0_BASE</code>, <code>SYSID_BASE</code>, and the Nios II CPU.</li>
+      <li>Software prints the startup banner in the JTAG UART console.</li>
+      <li>LEDs update in the same sequence printed in the console.</li>
+      <li>Invalid console input is handled without crashing the application.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ==================== STACK ==================== -->
+<section id="stack" class="container">
+  <span class="section-tag">07 / Tooling & Tech</span>
+  <h2 class="section-title">The <em>tooling</em> behind the project.</h2>
+
+  <div class="stack">
+    <span class="chip">Verilog HDL <span class="pct">84.3%</span></span>
+    <span class="chip">C <span class="pct">13.6%</span></span>
+    <span class="chip">Tcl <span class="pct">2.1%</span></span>
+    <span class="chip">Quartus Prime Lite</span>
+    <span class="chip">Platform Designer (Qsys)</span>
+    <span class="chip">Nios II Gen2</span>
+    <span class="chip">Avalon-MM</span>
+    <span class="chip">HAL · BSP</span>
+    <span class="chip">JTAG UART</span>
+    <span class="chip">USB Blaster</span>
+    <span class="chip">MAX 10 FPGA</span>
+    <span class="chip">DE10-Lite</span>
+    <span class="chip">Nios II SBT</span>
+    <span class="chip">Eclipse for Nios II</span>
+    <span class="chip">SDC Timing Constraints</span>
+    <span class="chip">altpll</span>
+    <span class="chip">Modular ADC IP</span>
+    <span class="chip">SPI Master IP</span>
+  </div>
+</section>
+
+<!-- ==================== FOOTER / CONTACT ==================== -->
+<footer id="contact" class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <span class="section-tag">08 / Get in touch</span>
+        <h3>I'm <em>actively looking</em> for ML / embedded&nbsp;ML / FPGA / SoC roles.</h3>
+        <p>
+          I'm Kazmir Fahrier — EEE engineer (BUET, US-evaluated) currently in Georgia Tech's OMSCS program, working at the intersection of hardware, ML, and systems software. This project is part of a portfolio that pairs RTL/SoC depth with the ML/CS theory needed to build the next generation of AI-accelerated edge devices.
+        </p>
+      </div>
+      <div class="footer-cta">
+        <a class="footer-link" href="https://github.com/KazmirFahrier" target="_blank" rel="noopener">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.87-1.54-3.87-1.54-.52-1.33-1.27-1.69-1.27-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.69 1.24 3.34.95.1-.74.4-1.24.72-1.53-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.18a10.95 10.95 0 015.74 0c2.19-1.49 3.15-1.18 3.15-1.18.62 1.58.23 2.75.11 3.04.74.81 1.18 1.84 1.18 3.1 0 4.43-2.69 5.4-5.26 5.69.41.36.78 1.06.78 2.13 0 1.54-.01 2.79-.01 3.16 0 .31.21.67.8.56C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z"/>
+          </svg>
+          <span>
+            <span class="lbl">GitHub</span>
+            github.com/KazmirFahrier
+          </span>
+        </a>
+        <a class="footer-link" href="https://www.linkedin.com/in/kazmir-fahrier" target="_blank" rel="noopener">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 0h-14c-2.76 0-5 2.24-5 5v14c0 2.76 2.24 5 5 5h14c2.76 0 5-2.24 5-5v-14c0-2.76-2.24-5-5-5zM8 19h-3v-10h3v10zm-1.5-11.27c-.97 0-1.75-.79-1.75-1.76s.78-1.76 1.75-1.76 1.75.79 1.75 1.76-.78 1.76-1.75 1.76zm13.5 11.27h-3v-5.6c0-1.37-.49-2.3-1.71-2.3-.94 0-1.49.63-1.74 1.24-.09.22-.11.52-.11.83v5.83h-3s.04-9.46 0-10h3v1.41c.4-.62 1.11-1.5 2.71-1.5 1.98 0 3.46 1.29 3.46 4.07v6.02z"/>
+          </svg>
+          <span>
+            <span class="lbl">LinkedIn</span>
+            linkedin.com/in/kazmir-fahrier
+          </span>
+        </a>
+        <a class="footer-link" href="https://github.com/KazmirFahrier/FPGA-Based-System-on-Chip-SoC-Design-with-Nios-II-Processor-on-DE10-Lite" target="_blank" rel="noopener">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 17V5l12-2v12"/>
+            <circle cx="6" cy="18" r="3"/>
+            <circle cx="18" cy="15" r="3"/>
+          </svg>
+          <span>
+            <span class="lbl">This Project</span>
+            FPGA-Based SoC · DE10-Lite
+          </span>
+        </a>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <span>© 2026 Kazmir Fahrier · Built with FPGA, C, and a soldering iron's worth of patience.</span>
+      <span class="right">DE10-LITE · MAX 10 · NIOS II GEN2</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  /* ============= LED counter demo ============= */
+  const ledRow = document.getElementById('ledRow');
+  const hexVal = document.getElementById('hexVal');
+  const consoleEl = document.getElementById('console');
+  const cmdBtns = document.querySelectorAll('.cmd-btn');
+
+  // build 8 LEDs
+  const LEDS = [];
+  for (let i = 7; i >= 0; i--) {
+    const led = document.createElement('div');
+    led.className = 'led';
+    ledRow.appendChild(led);
+    LEDS.push(led);
+  }
+
+  let count = 0;
+  let interval = null;
+  let mode = null;
+
+  function render() {
+    // bit 7 is LEDS[0] in the array (since we built MSB-first)
+    for (let i = 0; i < 8; i++) {
+      const bitPos = 7 - i; // LEDS[0] shows bit 7
+      const isOn = (count >> bitPos) & 1;
+      LEDS[i].classList.toggle('on', !!isOn);
+    }
+    const hex = '0x' + count.toString(16).toUpperCase().padStart(2, '0');
+    hexVal.textContent = hex;
+  }
+
+  function appendLine(html, cls = '') {
+    // Find the prompt line (last child) and insert before it
+    const promptLine = consoleEl.querySelector('.line:last-child');
+    const newLine = document.createElement('div');
+    newLine.className = 'line ' + cls;
+    newLine.innerHTML = html;
+    consoleEl.insertBefore(newLine, promptLine);
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+  }
+
+  function logCount(label) {
+    const hex = count.toString(16).toUpperCase().padStart(2, '0');
+    appendLine(`[${label}] count = <span class="hex">0x${hex}</span>`, 'val');
+  }
+
+  function startMode(newMode) {
+    if (interval) clearInterval(interval);
+    mode = newMode;
+
+    cmdBtns.forEach(b => b.classList.toggle('active',
+      b.dataset.cmd === newMode));
+
+    if (newMode === 'stop') {
+      appendLine('> stop', 'cmd');
+      appendLine('[halt] command loop paused', 'sys');
+      mode = null;
+      cmdBtns.forEach(b => b.classList.remove('active'));
+      return;
+    }
+
+    appendLine(`> ${newMode}`, 'cmd');
+    if (newMode === 'u') {
+      appendLine('[cmd] count up · +1 · 0x00 → 0xFF', 'sys');
+    } else if (newMode === 'd') {
+      count = 0xFF;
+      render();
+      appendLine('[cmd] count down · −1 · 0xFF → 0x00', 'sys');
+    } else if (newMode === '3') {
+      count = 0;
+      render();
+      appendLine('[cmd] step by 3 · +3 · 0x00 → 0xFF (wrap)', 'sys');
+    }
+
+    interval = setInterval(() => {
+      if (mode === 'u') count = (count + 1) & 0xFF;
+      else if (mode === 'd') count = (count - 1) & 0xFF;
+      else if (mode === '3') count = (count + 3) & 0xFF;
+      render();
+      // log every 16 steps to avoid spamming
+      if (count % 16 === 0) logCount(mode);
+    }, 180);
+  }
+
+  cmdBtns.forEach(btn => {
+    btn.addEventListener('click', () => startMode(btn.dataset.cmd));
+  });
+
+  // boot — initial state
+  render();
+
+  /* ============= console PID placeholder ============= */
+  const pid = Math.floor(Math.random() * 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+  document.querySelector('.console-bar span:last-child').textContent =
+    `JTAG_UART · NIOS II CONSOLE · PID 0x${pid}`;
+</script>
+
+</body>
+</html>
